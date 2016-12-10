@@ -29,15 +29,81 @@ function test() {
         });
 }
 
-function getAttractionsForDir(pos, dir, filters) {
-    for (var i = 0; i < util.DIRS.length; i++) {
-        //depending on the dirction offset the search center by radiusFilter/2
-        if (i == 0) {
+//Query everything. Put into own fileformat
+function init(pos, filters){
 
-        }
+}
+
+function getAttractionsForDir(pos, filters, callback) {
+    // See http://www.yelp.com/developers/documentation/v2/search_api
+    var sortedAttractions = [];
+    var c = 0;
+    for (var i = 0; i < filters.length; i++) {
+        yelp.search({ term: filters[i], location: pos[0] + "," + pos[1], sort: 2, radius_filter: radiusFilter })
+            .then(function(data) {
+
+                //guess the correct category
+                var cat = filters[c];
+                c += 1;
+                var relevantAttractions = selectRelevantAttractions(pos, data);
+                if (relevantAttractions.length > 0)
+                    sortedAttractions.push(sortAttractions(pos, cat, relevantAttractions, callback));
+                if (c == filters.length) {
+                    callback(sortedAttractions);
+                }
+            })
+            .catch(function(err) {
+                console.error(err);
+            });
     };
 }
 
+//TODO sort it into more than four directions
+function sortAttractions(pos, cat, attractions, callback) {
+    console.log("now sorting attractions for cat " + cat + ". they are " + attractions);
+    var northEast = [];
+    var southEast = [];
+    var southWest = [];
+    var northWest = [];
+
+    for (var i = 0; i < attractions.length; i++) {
+        if (attractions[i].location.latitude > pos[0]) {
+            if (attractions[i].location.longitude > pos[1]) {
+                northEast.push(attractions[i]);
+            } else {
+                northWest.push(attractions[i]);
+            }
+        } else {
+            if (attractions[i].location.longitude > pos[1]) {
+                southEast.push(attractions[i]);
+            } else {
+                southWest.push(attractions[i]);
+            }
+        }
+    }
+
+    //build response
+    var filterResponse = {
+        "cat": cat,
+        "results": [{
+            "dir": util.DIRS.indexOf("NE"),
+            "attractions": northEast
+        }, {
+            "dir": util.DIRS.indexOf("SE"),
+            "attractions": southEast
+        }, {
+            "dir": util.DIRS.indexOf("SW"),
+            "attractions": southWest
+        }, {
+            "dir": util.DIRS.indexOf("NW"),
+            "attractions": northWest
+        }]
+    };
+
+    return filterResponse;
+}
+
+//DEPRACTED - OLD :)
 function getCloseAttractions(pos, filters, callback) {
     // See http://www.yelp.com/developers/documentation/v2/search_api
     var relevantAttractions = [];
@@ -45,10 +111,10 @@ function getCloseAttractions(pos, filters, callback) {
     var c = 0;
 
     for (var i = 0; i < filters.length; i++) {
-        yelp.search({ term: filters[i], location: pos[0]+","+pos[1], sort: 2, radius_filter: radiusFilter })
+        yelp.search({ term: filters[i], location: pos[0] + "," + pos[1], sort: 2, radius_filter: radiusFilter })
             .then(function(data) {
                 c += 1;
-                relevantAttractions.push(selectRelevantAttractions(data));
+                relevantAttractions.push(selectRelevantAttractions(pos, data));
                 if (c == filters.length)
                     callback(relevantAttractions);
             })
@@ -63,21 +129,24 @@ function checkForCloseAttraction(pos, dir) {
 }
 
 //opening hours?
-function selectRelevantAttractions(data) {
+function selectRelevantAttractions(pos, data) {
     //primary immediate attractions
     //secondary attractions to show on map
     var businesses = data.businesses;
     var secondaryList = [];
     for (var i = 0; i < businesses.length; i++) {
         if (businesses[i].rating > minRating) {
+
+            var distance = getDistanceFromLatLngInM(businesses[i].location.coordinate.latitude, businesses[i].location.coordinate.longitude, pos[0], pos[1]);
+
             var attraction = {
                 "id": businesses[i].id,
                 "name": businesses[i].name,
                 "description": businesses[i].snippet_text,
                 "rating": businesses[i].rating,
                 "location": businesses[i].location.coordinate,
-                // "distance": businesses[i].location.coordinate,
-                // "directions": businesses[i].location.coordinate TODO!
+                "distance": distance
+                    // "directions": businesses[i].location.coordinate TODO!
             }
             secondaryList.push(attraction);
             console.log("push  " + businesses[i].name);
@@ -120,6 +189,27 @@ function getPlaceDetail(id, callback) {
         });
 }
 
+//taken from 
+//http://stackoverflow.com/questions/27928/calculate-distance-between-two-latitude-longitude-points-haversine-formula
+function getDistanceFromLatLngInM(lat1, lon1, lat2, lon2) {
+    var R = 6371000; // Radius of the earth in m
+    var dLat = deg2rad(lat2 - lat1); // deg2rad below
+    var dLon = deg2rad(lon2 - lon1);
+    var a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    var d = R * c; // Distance in m
+    return d;
+}
+
+function deg2rad(deg) {
+    return deg * (Math.PI / 180)
+}
+
+
 exports.test = test;
 exports.getCloseAttractions = getCloseAttractions;
 exports.getPlaceDetail = getPlaceDetail;
+exports.getAttractionsForDir = getAttractionsForDir;
