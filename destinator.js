@@ -29,14 +29,13 @@ function test() {
         });
 }
 
-function getAttractionsForDir(pos, dir, filters){
-	for (var i = 0; i < util.DIRS.length; i++) {
-		
-		//depending on the dirction offset the search center by radiusFilter/2
-		if(i==0){
-			
-		}
-	};
+function getAttractionsForDir(pos, dir, filters) {
+    for (var i = 0; i < util.DIRS.length; i++) {
+        //depending on the dirction offset the search center by radiusFilter/2
+        if (i == 0) {
+
+        }
+    };
 }
 
 function getCloseAttractions(pos, filters, callback) {
@@ -46,9 +45,9 @@ function getCloseAttractions(pos, filters, callback) {
     var c = 0;
 
     for (var i = 0; i < filters.length; i++) {
-        yelp.search({ term: filters[i], location: Stockholm, sort: 2, radius_filter: radiusFilter })
+        yelp.search({ term: filters[i], location: pos[0]+","+pos[1], sort: 2, radius_filter: radiusFilter })
             .then(function(data) {
-            	c+=1;
+                c += 1;
                 relevantAttractions.push(selectRelevantAttractions(data));
                 if (c == filters.length)
                     callback(relevantAttractions);
@@ -59,7 +58,7 @@ function getCloseAttractions(pos, filters, callback) {
     };
 }
 
-function checkForCloseAttraction(pos, dir){
+function checkForCloseAttraction(pos, dir) {
 
 }
 
@@ -110,15 +109,15 @@ function selectRelevantAttractions(data) {
 
 
 function getPlaceDetail(id, callback) {
-	console.log('looking for '+id);
-	yelp.search({ term: id, location: 'stockholm'})
-	    .then(function(data) {
-	    	console.log("ohlala, found "+data);
-	    	callback(data);
-	    })
-	    .catch(function(err) {
-	        console.error(err);
-	    });
+    console.log('looking for ' + id);
+    yelp.search({ term: id, location: 'stockholm' })
+        .then(function(data) {
+            console.log("ohlala, found " + data);
+            callback(data);
+        })
+        .catch(function(err) {
+            console.error(err);
+        });
 }
 
 exports.test = test;
